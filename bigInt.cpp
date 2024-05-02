@@ -4,8 +4,66 @@
 #include <vector>
 #include <algorithm>
 #include <fftw3.h>
+#include <complex>
 
 using namespace::std;
+
+//Perform FFT
+vector<complex<double>> bigInt::fft(const vector<complex<double>>& a){
+    int n = a.size();
+    fftw_complex* in = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * n);
+    fftw_complex* out = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * n);
+    fftw_plan p = fftw_plan_dft_1d(n, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+    
+    for (int i = 0; i < n; ++i) {
+        in[i][0] = a[i].real();
+        in[i][1] = a[i].imag();
+    }
+    
+    fftw_execute(p);
+    
+    vector<complex<double>> result(n);
+    for (int i = 0; i < n; ++i) {
+        result[i] = complex<double>(out[i][0], out[i][1]);
+    }
+    
+    fftw_destroy_plan(p);
+    fftw_free(in);
+    fftw_free(out);
+    
+    return result;
+}   
+
+vector<complex<double>> bigInt::ifft(const vector<complex<double>>& a){
+    int n = a.size();
+    fftw_complex* in = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * n);
+    fftw_complex* out = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * n);
+    fftw_plan p = fftw_plan_dft_1d(n, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+    
+    for (int i = 0; i < n; ++i) {
+        in[i][0] = a[i].real();
+        in[i][1] = a[i].imag();
+    }
+    
+    fftw_execute(p);
+    
+    vector<complex<double>> result(n);
+    for (int i = 0; i < n; ++i) {
+        result[i] = complex<double>(out[i][0] / n, out[i][1] / n);
+    }
+    
+    fftw_destroy_plan(p);
+    fftw_free(in);
+    fftw_free(out);
+    
+    return result;
+}
+
+
+
+
+
+
 
 bigInt::bigInt(string num){
     {
@@ -71,6 +129,52 @@ void bigInt::subtract(bigInt num){
     number = result;
 }
 
-void bigInt::multiply(bigInt num){
-    
+void bigInt::multiply(bigInt num) {
+    int n = 1;
+    while (n < 2 * max(number.size(), num.number.size())) {
+        n <<= 1;
+    }
+
+    // Zero-pad input arrays
+    vector<complex<double>> fa(n), fb(n);
+    for (int i = 0; i < number.size(); ++i) {
+        fa[i] = complex<double>(number[i], 0);
+    }
+    for (int i = 0; i < num.number.size(); ++i) {
+        fb[i] = complex<double>(num.number[i], 0);
+    }
+
+    // Perform FFT
+    fa = fft(fa);
+    fb = fft(fb);
+
+    // Multiply FFT results element-wise
+    vector<complex<double>> result(n);
+    for (int i = 0; i < n; ++i) {
+        result[i] = fa[i] * fb[i];
+    }
+
+    // Perform inverse FFT
+    result = ifft(result);
+
+    // Extract real parts (rounding to integers)
+    vector<int> res(n);
+    for (int i = 0; i < n; ++i) {
+        res[i] = round(result[i].real());
+    }
+
+    // Handle carries
+    int carry = 0;
+    for (int i = n - 1; i >= 0; --i) {
+        res[i] += carry;
+        carry = res[i] / 10;
+        res[i] %= 10;
+    }
+
+    // Remove leading zeros
+    while (res.size() > 1 && res.back() == 0) {
+        res.pop_back();
+    }
+
+    number = res;
 }
