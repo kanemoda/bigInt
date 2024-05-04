@@ -17,4 +17,5 @@ public:
     void add(bigInt num);
     void subtract(bigInt num);
     void multiply(bigInt num);
+    void divide(bigInt num);
 };
