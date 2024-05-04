@@ -33,7 +33,7 @@ vector<complex<double>> bigInt::fft(const vector<complex<double>>& a){
     
     return result;
 }   
-
+//Perform IFFT
 vector<complex<double>> bigInt::ifft(const vector<complex<double>>& a){
     int n = a.size();
     fftw_complex* in = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * n);
@@ -177,4 +177,75 @@ void bigInt::multiply(bigInt num) {
     }
 
     number = res;
+}
+
+void bigInt::divide(bigInt num){
+    // Find the sizes of dividend and divisor
+    int dividendSize = number.size();
+    int divisorSize = num.number.size();
+
+    // Calculate the size needed for FFT (next power of 2)
+    int fftSize = 1;
+    while (fftSize < 2 * max(dividendSize, divisorSize)) {
+        fftSize <<= 1;
+    }
+
+    // Create arrays for complex numbers
+    fftw_complex* dividendFFT = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * fftSize);
+    fftw_complex* divisorFFT = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * fftSize);
+    fftw_complex* resultFFT = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * fftSize);
+
+    // Initialize arrays with zeros
+    for (int i = 0; i < fftSize; ++i) {
+        dividendFFT[i][0] = 0.0;
+        dividendFFT[i][1] = 0.0;
+        divisorFFT[i][0] = 0.0;
+        divisorFFT[i][1] = 0.0;
+    }
+
+    // Fill the arrays with data from dividend and divisor
+    for (int i = 0; i < dividendSize; ++i) {
+        dividendFFT[i][0] = number[dividendSize - 1 - i];
+    }
+    for (int i = 0; i < divisorSize; ++i) {
+        divisorFFT[i][0] = num.number[divisorSize - 1 - i];
+    }
+
+    // Create FFT plans
+    fftw_plan dividendPlan = fftw_plan_dft_1d(fftSize, dividendFFT, resultFFT, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_plan divisorPlan = fftw_plan_dft_1d(fftSize, divisorFFT, resultFFT, FFTW_FORWARD, FFTW_ESTIMATE);
+
+    // Perform FFT on dividend and divisor
+    fftw_execute(dividendPlan);
+    fftw_execute(divisorPlan);
+
+    // Perform element-wise division
+    for (int i = 0; i < fftSize; ++i) {
+        double realPart = dividendFFT[i][0] * divisorFFT[i][0] - dividendFFT[i][1] * divisorFFT[i][1];
+        double imagPart = dividendFFT[i][0] * divisorFFT[i][1] + dividendFFT[i][1] * divisorFFT[i][0];
+        resultFFT[i][0] = realPart;
+        resultFFT[i][1] = imagPart;
+    }
+
+    // Create inverse FFT plan
+    fftw_plan inversePlan = fftw_plan_dft_1d(fftSize, resultFFT, dividendFFT, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+    // Perform inverse FFT
+    fftw_execute(inversePlan);
+
+    // Extract the real parts and scale the result
+    vector<int> quotient;
+    for (int i = 0; i < dividendSize; ++i) {
+        quotient.push_back(round(dividendFFT[i][0] / fftSize));
+    }
+
+    // Free memory and destroy plans
+    fftw_destroy_plan(dividendPlan);
+    fftw_destroy_plan(divisorPlan);
+    fftw_destroy_plan(inversePlan);
+    fftw_free(dividendFFT);
+    fftw_free(divisorFFT);
+    fftw_free(resultFFT);
+
+    number = quotient;
 }
