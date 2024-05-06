@@ -22,6 +22,13 @@ To compile the project, use the following command:
 ```bash
 g++ *.cpp -o filename -lfftw3 -lm
 ```
+
+To run the project, use the following command:
+
+```bash
+./filename
+```
+
 ## Requirements
 In order to compile and use BigInt with FFTW integration, ensure that you have the libfftw3-dev package installed on your system. You can install it using the package manager available for your operating system. For example, on Debian-based systems, you can install it with the following command:
 ### For Debian/Ubuntu:
